@@ -32,12 +32,14 @@ class InternshipsParser:
         while True:
             response = await self.get_data_by_page(page)
             data = response['data']
+
             current_page_uuids: set = {row['uuid'] for row in data}
             new_uuids = current_page_uuids - unique_uuids
             if not new_uuids:
                 break
-            logging.debug(
-                f'New unique UUIDs found on page {page}: {len(new_uuids)}',
+            logging.info(
+                'Новые уникальные стажировки, '
+                f'найденные на странице {page}: {len(new_uuids)}',
             )
 
             unique_uuids.update(current_page_uuids)
