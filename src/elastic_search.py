@@ -1,10 +1,11 @@
 import logging
+import os
 
 from elasticsearch import Elasticsearch
 
 from config import INDEX_SETTINGS
 
-es = Elasticsearch('http://localhost:9200')
+es = Elasticsearch(os.getenv('ELASTICSEARCH_URL'))
 
 
 def create_index(index_name: str) -> None:
