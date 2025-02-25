@@ -25,9 +25,12 @@ def main() -> None:
         if results:
             logging.info(f'Найдено {len(results)} результатов:')
             for result in results:
-                logging.info(
+                company_data = result["_source"]["company"]
+                print(
                     f'- {result["_source"]["title"]} '
-                    f'в компании {result["_source"]["company"]["caption"]}.'
+                    f'в компании {company_data["caption"]}.'
+                    f'\nURL: https://fut.ru/internship/{company_data["alias"]}/{result["_source"]["alias"]}'
+                    '\n',
                 )
         else:
             logging.info('Результаты не найдены.')
