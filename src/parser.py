@@ -37,12 +37,12 @@ class InternshipsParser:
             new_uuids = current_page_uuids - unique_uuids
             if not new_uuids:
                 break
-            logging.info(
-                'Новые уникальные стажировки, '
-                f'найденные на странице {page}: {len(new_uuids)}',
-            )
-
             unique_uuids.update(current_page_uuids)
+
+            logging.info(
+                f'Новые найденные стажировки, на странице {page}: '
+                f'{len(new_uuids)} (всего {len(unique_uuids)})',
+            )
             total_data.extend(data)
             page += 1
 
