@@ -1,4 +1,26 @@
 INDEX_SETTINGS = {
+    'settings': {
+        'analysis': {
+            'tokenizer': {
+                'standard': {
+                    'type': 'standard',
+                },
+            },
+            'filter': {
+                'synonym_filter': {
+                    'type': 'synonym',
+                    'synonyms_path': 'synonyms.txt',
+                },
+            },
+            'analyzer': {
+                'synonym_analyzer': {
+                    'type': 'custom',
+                    'tokenizer': 'standard',
+                    'filter': ['synonym_filter', 'lowercase', 'stop'],
+                },
+            },
+        },
+    },
     'mappings': {
         'properties': {
             'title': {'type': 'text'},
@@ -8,6 +30,8 @@ INDEX_SETTINGS = {
             'seo_tags': {'type': 'keyword'},
             'alias': {'type': 'keyword'},
             'publication_status': {'type': 'keyword'},
+            'status': {'type': 'keyword'},
+            'visibility': {'type': 'keyword'},
             'slogan': {'type': 'text'},
             'tags': {
                 'type': 'nested',
@@ -23,7 +47,24 @@ INDEX_SETTINGS = {
                     'caption': {'type': 'text'},
                     'alias': {'type': 'keyword'},
                     'rating': {'type': 'integer'},
-                    # 'description': {'type': 'text'},
+                    'description': {
+                        'type': 'nested',
+                        'properties': {
+                            'blocks': {
+                                'type': 'nested',
+                                'properties': {
+                                    'data': {
+                                        'type': 'nested',
+                                        'properties': {
+                                            'text': {
+                                                'type': 'text',
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     'percentages': {'type': 'float'},
                     'directions': {
                         'type': 'nested',
@@ -46,11 +87,136 @@ INDEX_SETTINGS = {
                 'properties': {
                     'name': {'type': 'text'},
                     'alias': {'type': 'keyword'},
-                }
+                },
             },
-        }
-    }
+            'last_position_end_date': {'type': 'date'},
+        },
+    },
 }
+
+
+def get_search_body(query: str) -> dict:
+    """Генерация тела запроса для поиска с динамическим query"""
+    return {
+        'query': {
+            'bool': {
+                'should': [
+                    # Поиск по основным полям документа
+                    {
+                        'multi_match': {
+                            'query': query,
+                            'fields': [
+                                'title^5',
+                                'description^3',
+                                'seo_title^3',
+                                'seo_description^2',
+                                'seo_tags',
+                                'alias',
+                                'publication_status',
+                                'slogan',
+                            ],
+                            'fuzziness': 'AUTO',
+                        }
+                    },
+                    # Поиск по вложенному полю tags
+                    {
+                        'nested': {
+                            'path': 'tags',
+                            'query': {
+                                'multi_match': {
+                                    'query': query,
+                                    'fields': [
+                                        'tags.caption^4',
+                                        'tags.seo_description^2',
+                                        'tags.seo_title',
+                                        'tags.seo_uri',
+                                    ],
+                                    'fuzziness': 'AUTO',
+                                }
+                            },
+                        }
+                    },
+                    # Поиск по вложенным полям company.directions
+                    {
+                        'nested': {
+                            'path': 'company.directions',
+                            'query': {
+                                'multi_match': {
+                                    'query': query,
+                                    'fields': [
+                                        'company.directions.caption',
+                                        'company.directions.alias',
+                                    ],
+                                    'fuzziness': 'AUTO',
+                                }
+                            },
+                        }
+                    },
+                    # Поиск по вложенным полям company.industries
+                    {
+                        'nested': {
+                            'path': 'company.industries',
+                            'query': {
+                                'multi_match': {
+                                    'query': query,
+                                    'fields': [
+                                        'company.industries.name^3',
+                                    ],
+                                    'fuzziness': 'AUTO',
+                                }
+                            },
+                        }
+                    },
+                    # Поиск по основным полям компании
+                    {
+                        'multi_match': {
+                            'query': query,
+                            'fields': [
+                                'company.caption^4',
+                                'company.seo_description',
+                                'company.seo_title',
+                                'company.alias',
+                            ],
+                            'fuzziness': 'AUTO',
+                        }
+                    },
+                    # Поиск по типу публикации
+                    {
+                        'multi_match': {
+                            'query': query,
+                            'fields': [
+                                'publication_type.name^2',
+                                'publication_type.alias',
+                            ],
+                            'fuzziness': 'AUTO',
+                        }
+                    },
+                    # Поиск по полям направления
+                    {
+                        'multi_match': {
+                            'query': query,
+                            'fields': ['direction.caption', 'direction.alias'],
+                            'fuzziness': 'AUTO',
+                        },
+                    },
+                ],
+                'minimum_should_match': 1,
+                # 'filter': [
+                #     {
+                #         'term': {'status': 'published'}  # ? фильтр по статусу
+                #     }
+                # ],
+            },
+        },
+        'sort': [
+            {
+                'last_position_end_date': {
+                    'order': 'asc',
+                    'unmapped_type': 'date',
+                },
+            },
+        ],
+    }
 
 
 # ELASTIC_SEARCH_BODY = {

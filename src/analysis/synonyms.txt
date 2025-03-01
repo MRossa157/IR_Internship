@@ -1,0 +1,7 @@
+python, py, питон
+developer, programmer, разработчик, разраб, инженер, software developer, dev
+intern, trainee, стажер, джун
+manager, leader, менеджер, мэнеджер, лидер, тимлид, лид
+стажировка, практика, internship, практикант
+финансы, деньги, экономика, финансовый
+data science, ds, дс, дата саентист, мл, machine learning, мл, data scientist

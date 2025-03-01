@@ -1,14 +1,20 @@
 import logging
 from asyncio import run
 
-from constants import INDEX_NAME
+from constants import BAD_WORDS, INDEX_NAME
 from elastic_search import create_index, index_internships, search_internships
 from src.parser import InternshipsParser
+from utils import remove_bad_words, save_json
 
 
 async def start_parsing() -> dict:
     async with InternshipsParser() as parser:  # noqa: F821
-        return await parser.get_total_data()
+        parser_result = await parser.get_total_data()
+
+    parser_result = remove_bad_words(parser_result, BAD_WORDS)
+    save_json('parser_result.json', parser_result)
+
+    return parser_result
 
 
 def main() -> None:
@@ -38,4 +44,5 @@ def main() -> None:
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
+    logging.getLogger('elastic_transport.transport').setLevel(logging.WARNING)
     main()
