@@ -25,23 +25,29 @@ def index_internships(json_data: dict, index_name: str) -> None:
 
 
 def search_internships(query, index_name: str):
-    """Поиск стажировок по запросу, учитывая вложенные поля"""
+    """Расширенный поиск стажировок с учетом множества полей и вложенных объектов"""
     body = {
         'query': {
             'bool': {
                 'should': [
+                    # Поиск по основным полям документа
                     {
                         'multi_match': {
                             'query': query,
                             'fields': [
-                                'title^3',
-                                'description^2',
-                                'seo_description',
-                                'status',
+                                'title^5',
+                                'description^3',
+                                'seo_title^3',
+                                'seo_description^2',
+                                'seo_tags',
+                                'alias',
                                 'publication_status',
+                                'slogan',
                             ],
+                            'fuzziness': 'AUTO',
                         }
                     },
+                    # Поиск по вложенному полю tags
                     {
                         'nested': {
                             'path': 'tags',
@@ -49,15 +55,17 @@ def search_internships(query, index_name: str):
                                 'multi_match': {
                                     'query': query,
                                     'fields': [
-                                        'tags.caption^2',
-                                        'tags.seo_description',
+                                        'tags.caption^4',
+                                        'tags.seo_description^2',
                                         'tags.seo_title',
                                         'tags.seo_uri',
                                     ],
+                                    'fuzziness': 'AUTO',
                                 }
                             },
                         }
                     },
+                    # Поиск по вложенным полям company.directions
                     {
                         'nested': {
                             'path': 'company.directions',
@@ -68,32 +76,60 @@ def search_internships(query, index_name: str):
                                         'company.directions.caption',
                                         'company.directions.alias',
                                     ],
+                                    'fuzziness': 'AUTO',
                                 }
                             },
                         }
                     },
+                    # Поиск по вложенным полям company.industries
+                    {
+                        'nested': {
+                            'path': 'company.industries',
+                            'query': {
+                                'multi_match': {
+                                    'query': query,
+                                    'fields': [
+                                        'company.industries.name^3',
+                                    ],
+                                    'fuzziness': 'AUTO',
+                                }
+                            },
+                        }
+                    },
+                    # Поиск по основным полям компании
                     {
                         'multi_match': {
                             'query': query,
                             'fields': [
-                                'company.caption^2',
+                                'company.caption^4',
                                 'company.seo_description',
                                 'company.seo_title',
+                                'company.alias',
                             ],
+                            'fuzziness': 'AUTO',
                         }
                     },
+                    # Поиск по типу публикации
                     {
                         'multi_match': {
                             'query': query,
-                            'fields': ['industry.name^2', 'industry.uuid'],
+                            'fields': [
+                                'publication_type.name^2',
+                                'publication_type.alias',
+                            ],
+                            'fuzziness': 'AUTO',
+                        }
+                    },
+                    # Поиск по полям направления
+                    {
+                        'multi_match': {
+                            'query': query,
+                            'fields': ['direction.caption', 'direction.alias'],
+                            'fuzziness': 'AUTO',
                         }
                     },
                 ],
-                'filter': [
-                    {
-                        'term': {'status': 'published'}  # ? фильтр по статусу
-                    }
-                ],
+                'minimum_should_match': 1,
             }
         }
     }
