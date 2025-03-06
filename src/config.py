@@ -90,6 +90,64 @@ INDEX_SETTINGS = {
                 },
             },
             'last_position_end_date': {'type': 'date'},
+            'positions': {
+                'type': 'nested',
+                'properties': {
+                    # 'uuid': {'type': 'keyword'},
+                    'name': {'type': 'text'},
+                    # 'published_at': {'type': 'date'},
+                    # 'unpublished_at': {'type': 'date'},
+                    'description': {
+                        'properties': {
+                            # 'time': {'type': 'long'},
+                            'blocks': {
+                                'type': 'nested',
+                                'properties': {
+                                    'type': {'type': 'keyword'},
+                                    'data': {
+                                        'properties': {
+                                            'text': {'type': 'text'},
+                                            'items': {'type': 'text'},
+                                        },
+                                    },
+                                },
+                            },
+                            # 'version': {'type': 'keyword'},
+                        },
+                    },
+                    'status': {'type': 'keyword'},
+                    'status_after': {'type': 'keyword'},
+                    'field_mode': {'type': 'keyword'},
+                    'cities': {
+                        'type': 'nested',
+                        'properties': {
+                            # 'uuid': {'type': 'keyword'},
+                            'caption': {'type': 'text'},
+                            # 'alias': {'type': 'keyword'},
+                            # 'is_custom': {'type': 'boolean'},
+                            # 'updated_at': {'type': 'date'},
+                            # 'created_at': {'type': 'date'},
+                        },
+                    },
+                    'spheres': {
+                        'type': 'nested',
+                        'properties': {
+                            'caption': {'type': 'text'},
+                        },
+                    },
+                    'accepted_registrations_number': {'type': 'integer'},
+                    # 'blocks': {'type': 'nested'},  # Пустой массив в примере
+                    'group': {'type': 'keyword'},
+                    'external_link': {'type': 'keyword'},
+                    # 'tag_from_cms': {
+                    #     'type': 'nested',
+                    #     'properties': {
+                    #         'uuid': {'type': 'keyword'},
+                    #         'tag_cms_uuid': {'type': 'keyword'},
+                    #     },
+                    # },
+                },
+            },
         },
     },
 }
