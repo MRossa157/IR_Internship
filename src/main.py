@@ -4,7 +4,7 @@ from asyncio import run
 from constants import BAD_WORDS, INDEX_NAME
 from elastic_search import create_index, index_internships, search_internships
 from src.parser import InternshipsParser
-from utils import remove_bad_words, save_json
+from utils import print_search_result, remove_bad_words, save_json
 
 
 async def start_parsing() -> dict:
@@ -12,7 +12,7 @@ async def start_parsing() -> dict:
         parser_result = await parser.get_total_data()
 
     parser_result = remove_bad_words(parser_result, BAD_WORDS)
-    save_json('parser_result.json', parser_result)
+    save_json('parser_results.json', parser_result)
 
     return parser_result
 
@@ -30,14 +30,10 @@ def main() -> None:
         results = search_internships(query, INDEX_NAME)
         if results:
             logging.info(f'Найдено {len(results)} результатов:')
-            for result in results:
-                company_data = result["_source"]["company"]
-                print(
-                    f'- {result["_source"]["title"]} '
-                    f'в компании {company_data["caption"]}.'
-                    f'\nURL: https://fut.ru/internship/{company_data["alias"]}/{result["_source"]["alias"]}'
-                    '\n',
-                )
+            for idx, result in enumerate(results):
+                if idx == 0:
+                    save_json(f'{query}.json', result)
+                print_search_result(result)
         else:
             logging.info('Результаты не найдены.')
 
