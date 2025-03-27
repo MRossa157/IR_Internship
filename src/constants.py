@@ -14,3 +14,5 @@ BAD_WORDS = {
     '<a>',
     '</a>',
 }
+
+PARSER_RESULT_FILENAME = 'parser_result.json'
