@@ -54,7 +54,10 @@ class InternshipsParser:
         return result
 
     async def __get_positions_data(self, item: dict[str, Any]) -> None:
-        """Приватный метод для получения данных о событии и добавления их в исходный элемент"""
+        """
+        Приватный метод для получения данных о событии
+        и добавления их в исходный элемент
+        """
         try:
             event_data = await self.__send_request(
                 f'{EVENTS_LIST_PATH}/{item["event"]}',
@@ -91,7 +94,7 @@ class InternshipsParser:
         if not self.__session:
             raise RuntimeError(
                 'Session is not initialized. '
-                "Use 'async with' to manage the session."
+                "Use 'async with' to manage the session.",
             )
 
         async with self.__session.get(uri) as response:
