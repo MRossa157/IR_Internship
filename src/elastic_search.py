@@ -15,7 +15,7 @@ def create_index(index_name: str) -> None:
         es.indices.create(index=index_name, body=INDEX_SETTINGS)
         logging.info('Индекс создан.')
     else:
-        logging.warning('Индекс уже существует.')
+        logging.warning('Индекс уже существует. Пропускаем создание.')
 
 
 def index_internships(json_data: dict, index_name: str) -> None:
@@ -28,10 +28,15 @@ def index_internships(json_data: dict, index_name: str) -> None:
     logging.info(f'{len(json_data)} документов проиндексировано.')
 
 
-def search_internships(query, index_name: str):
+def search_internships(
+    query,
+    index_name: str,
+    size: int = 10,
+):
     """
     Расширенный поиск стажировок с учетом множества полей и вложенных объектов
     """
     body = get_search_body(query)
+    body['size'] = size
     response = es.search(index=index_name, body=body)
     return response['hits']['hits']

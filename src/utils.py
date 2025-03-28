@@ -4,19 +4,19 @@ from datetime import datetime
 from typing import Any
 
 
-def load_json(file_path) -> dict:
+def load_json(file_path: str) -> dict:
     """Загрузка данных из JSON-файла"""
     with open(file_path, encoding='utf-8') as f:
         return json.load(f)
 
 
-def save_json(file_path, data: dict) -> None:
+def save_json(file_path: str, data: dict) -> None:
     """Сохранение данных в JSON-файл"""
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 
-def convert_to_iso_format(date_str):
+def convert_to_iso_format(date_str: str) -> str:
     date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
 
     return date_obj.isoformat()
@@ -40,7 +40,7 @@ def remove_bad_words(data: list[dict], bad_words: set[str]) -> list[dict]:
 
 
 def print_search_result(result: dict[str, Any], verbose: bool = False) -> None:
-    company_data = result["_source"]["company"]
+    company_data = result['_source']['company']
 
     positions_raw = result['_source'].get('positions')
     if positions_raw is not None:
