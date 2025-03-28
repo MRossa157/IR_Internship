@@ -1,3 +1,5 @@
+from eval.tech_categories import TECH_CATEGORIES
+
 INDEX_SETTINGS = {
     'settings': {
         'analysis': {
@@ -5,26 +7,72 @@ INDEX_SETTINGS = {
                 'standard': {
                     'type': 'standard',
                 },
+                'ngram_tokenizer': {
+                    'type': 'ngram',
+                    'min_gram': 3,
+                    'max_gram': 4,
+                    'token_chars': ['letter', 'digit'],
+                },
             },
             'filter': {
                 'synonym_filter': {
                     'type': 'synonym',
                     'synonyms_path': 'synonyms.txt',
                 },
+                'shingle_filter': {
+                    'type': 'shingle',
+                    'min_shingle_size': 2,
+                    'max_shingle_size': 3,
+                },
+                'russian_stemmer': {'type': 'stemmer', 'language': 'russian'},
+                'english_stemmer': {'type': 'stemmer', 'language': 'english'},
             },
             'analyzer': {
                 'synonym_analyzer': {
                     'type': 'custom',
                     'tokenizer': 'standard',
-                    'filter': ['synonym_filter', 'lowercase', 'stop'],
+                    'filter': [
+                        'synonym_filter',
+                        'lowercase',
+                        'stop',
+                        'russian_stemmer',
+                        'english_stemmer',
+                    ],
+                },
+                # Анализатор для поиска по частичным совпадениям
+                'ngram_analyzer': {
+                    'type': 'custom',
+                    'tokenizer': 'ngram_tokenizer',
+                    'filter': ['lowercase'],
+                },
+                'shingle_analyzer': {
+                    'type': 'custom',
+                    'tokenizer': 'standard',
+                    'filter': [
+                        'lowercase',
+                        'shingle_filter',
+                        'russian_stemmer',
+                        'english_stemmer',
+                    ],
                 },
             },
         },
+        'index': {'max_ngram_diff': 2},
     },
     'mappings': {
         'properties': {
-            'title': {'type': 'text'},
-            'description': {'type': 'text'},
+            'title': {
+                'type': 'text',
+                'analyzer': 'synonym_analyzer',
+                'fields': {
+                    'ngram': {'type': 'text', 'analyzer': 'ngram_analyzer'},
+                    'shingle': {'type': 'text', 'analyzer': 'shingle_analyzer'},
+                },
+            },
+            'description': {
+                'type': 'text',
+                'analyzer': 'synonym_analyzer',
+            },
             'seo_title': {'type': 'text'},
             'seo_description': {'type': 'text'},
             'seo_tags': {'type': 'keyword'},
@@ -36,7 +84,7 @@ INDEX_SETTINGS = {
             'tags': {
                 'type': 'nested',
                 'properties': {
-                    'caption': {'type': 'text'},
+                    'caption': {'type': 'text', 'analyzer': 'synonym_analyzer'},
                     'seo_description': {'type': 'text'},
                     'seo_title': {'type': 'text'},
                     'seo_uri': {'type': 'keyword'},
@@ -58,6 +106,7 @@ INDEX_SETTINGS = {
                                         'properties': {
                                             'text': {
                                                 'type': 'text',
+                                                'analyzer': 'synonym_analyzer',
                                             },
                                         },
                                     },
@@ -93,26 +142,41 @@ INDEX_SETTINGS = {
             'positions': {
                 'type': 'nested',
                 'properties': {
-                    # 'uuid': {'type': 'keyword'},
-                    'name': {'type': 'text'},
-                    # 'published_at': {'type': 'date'},
-                    # 'unpublished_at': {'type': 'date'},
+                    'name': {
+                        'type': 'text',
+                        'analyzer': 'synonym_analyzer',
+                        'fields': {
+                            'ngram': {
+                                'type': 'text',
+                                'analyzer': 'ngram_analyzer',
+                            },
+                            'shingle': {
+                                'type': 'text',
+                                'analyzer': 'shingle_analyzer',
+                            },
+                            'keyword': {'type': 'keyword'},
+                        },
+                    },
                     'description': {
                         'properties': {
-                            # 'time': {'type': 'long'},
                             'blocks': {
                                 'type': 'nested',
                                 'properties': {
                                     'type': {'type': 'keyword'},
                                     'data': {
                                         'properties': {
-                                            'text': {'type': 'text'},
-                                            'items': {'type': 'text'},
+                                            'text': {
+                                                'type': 'text',
+                                                'analyzer': 'synonym_analyzer',
+                                            },
+                                            'items': {
+                                                'type': 'text',
+                                                'analyzer': 'synonym_analyzer',
+                                            },
                                         },
                                     },
                                 },
                             },
-                            # 'version': {'type': 'keyword'},
                         },
                     },
                     'status': {'type': 'keyword'},
@@ -121,31 +185,21 @@ INDEX_SETTINGS = {
                     'cities': {
                         'type': 'nested',
                         'properties': {
-                            # 'uuid': {'type': 'keyword'},
                             'caption': {'type': 'text'},
-                            # 'alias': {'type': 'keyword'},
-                            # 'is_custom': {'type': 'boolean'},
-                            # 'updated_at': {'type': 'date'},
-                            # 'created_at': {'type': 'date'},
                         },
                     },
                     'spheres': {
                         'type': 'nested',
                         'properties': {
-                            'caption': {'type': 'text'},
+                            'caption': {
+                                'type': 'text',
+                                'analyzer': 'synonym_analyzer',
+                            },
                         },
                     },
                     'accepted_registrations_number': {'type': 'integer'},
-                    # 'blocks': {'type': 'nested'},  # Пустой массив в примере
                     'group': {'type': 'keyword'},
                     'external_link': {'type': 'keyword'},
-                    # 'tag_from_cms': {
-                    #     'type': 'nested',
-                    #     'properties': {
-                    #         'uuid': {'type': 'keyword'},
-                    #         'tag_cms_uuid': {'type': 'keyword'},
-                    #     },
-                    # },
                 },
             },
         },
@@ -154,119 +208,237 @@ INDEX_SETTINGS = {
 
 
 def get_search_body(query: str) -> dict:
-    """Генерация тела запроса для поиска с динамическим query"""
-    return {
+    """
+    Улучшенная функция поиска с поддержкой различных типов запросов.
+
+    Args:
+        query: Поисковый запрос
+
+    Returns:
+        Тело запроса к Elasticsearch
+    """
+    search_body = {
         'query': {
-            'bool': {
-                'should': [
-                    # Поиск по основным полям документа
-                    {
-                        'multi_match': {
-                            'query': query,
-                            'fields': [
-                                'title^5',
-                                'description^3',
-                                'seo_title^3',
-                                'seo_description^2',
-                                'seo_tags',
-                                'alias',
-                                'publication_status',
-                                'slogan',
-                            ],
-                            'fuzziness': 'AUTO',
-                        }
-                    },
-                    # Поиск по вложенному полю tags
-                    {
-                        'nested': {
-                            'path': 'tags',
-                            'query': {
+            'function_score': {
+                'query': {
+                    'bool': {
+                        'should': [
+                            # Поиск по основным полям документа
+                            {
                                 'multi_match': {
                                     'query': query,
                                     'fields': [
-                                        'tags.caption^4',
-                                        'tags.seo_description^2',
-                                        'tags.seo_title',
-                                        'tags.seo_uri',
+                                        'title^5',
+                                        'title.shingle^4',
+                                        'description^3',
+                                        'seo_title^3',
+                                        'seo_description^2',
+                                        'seo_tags',
+                                        'alias',
+                                        'publication_status',
+                                        'slogan',
+                                    ],
+                                    'fuzziness': 'AUTO',
+                                    'operator': 'OR',
+                                    'type': 'best_fields',
+                                    'tie_breaker': 0.3,
+                                }
+                            },
+                            # Поиск по вложенному полю tags
+                            {
+                                'nested': {
+                                    'path': 'tags',
+                                    'query': {
+                                        'multi_match': {
+                                            'query': query,
+                                            'fields': [
+                                                'tags.caption^4',
+                                                'tags.seo_description^2',
+                                                'tags.seo_title',
+                                                'tags.seo_uri',
+                                            ],
+                                            'fuzziness': 'AUTO',
+                                        }
+                                    },
+                                    'score_mode': 'max',
+                                }
+                            },
+                            # Поиск по вложенным полям company.directions
+                            {
+                                'nested': {
+                                    'path': 'company.directions',
+                                    'query': {
+                                        'multi_match': {
+                                            'query': query,
+                                            'fields': [
+                                                'company.directions.caption',
+                                                'company.directions.alias',
+                                            ],
+                                            'fuzziness': 'AUTO',
+                                        }
+                                    },
+                                    'score_mode': 'max',
+                                }
+                            },
+                            # Поиск по вложенным полям company.industries
+                            {
+                                'nested': {
+                                    'path': 'company.industries',
+                                    'query': {
+                                        'multi_match': {
+                                            'query': query,
+                                            'fields': [
+                                                'company.industries.name^3',
+                                            ],
+                                            'fuzziness': 'AUTO',
+                                        }
+                                    },
+                                    'score_mode': 'max',
+                                }
+                            },
+                            # Поиск по основным полям компании
+                            {
+                                'multi_match': {
+                                    'query': query,
+                                    'fields': [
+                                        'company.caption^4',
+                                        'company.seo_description',
+                                        'company.seo_title',
+                                        'company.alias',
                                     ],
                                     'fuzziness': 'AUTO',
                                 }
                             },
-                        }
-                    },
-                    # Поиск по вложенным полям company.directions
-                    {
-                        'nested': {
-                            'path': 'company.directions',
-                            'query': {
+                            # Поиск по типу публикации
+                            {
                                 'multi_match': {
                                     'query': query,
                                     'fields': [
-                                        'company.directions.caption',
-                                        'company.directions.alias',
+                                        'publication_type.name^2',
+                                        'publication_type.alias',
                                     ],
                                     'fuzziness': 'AUTO',
                                 }
                             },
-                        }
-                    },
-                    # Поиск по вложенным полям company.industries
-                    {
-                        'nested': {
-                            'path': 'company.industries',
-                            'query': {
+                            # Поиск по полям направления
+                            {
                                 'multi_match': {
                                     'query': query,
                                     'fields': [
-                                        'company.industries.name^3',
+                                        'direction.caption',
+                                        'direction.alias',
                                     ],
                                     'fuzziness': 'AUTO',
+                                },
+                            },
+                            # Улучшенный поиск по позициям
+                            {
+                                'nested': {
+                                    'path': 'positions',
+                                    'query': {
+                                        'bool': {
+                                            'should': [
+                                                # Повышаем значимость названия позиции
+                                                {
+                                                    'match': {
+                                                        'positions.name': {
+                                                            'query': query,
+                                                            'boost': 10,  # Высокий буст для точного совпадения в названии позиции
+                                                            'fuzziness': 'AUTO',
+                                                        }
+                                                    }
+                                                },
+                                                # Поиск по n-граммам для частичных совпадений
+                                                {
+                                                    'match': {
+                                                        'positions.name.ngram': {
+                                                            'query': query,
+                                                            'boost': 6,  # Высокий буст для частичных совпадений
+                                                        }
+                                                    }
+                                                },
+                                                # Поиск по шинглам для словосочетаний
+                                                {
+                                                    'match': {
+                                                        'positions.name.shingle': {
+                                                            'query': query,
+                                                            'boost': 8,  # Высокий буст для словосочетаний
+                                                        }
+                                                    }
+                                                },
+                                                # Поиск в описании позиции
+                                                {
+                                                    'nested': {
+                                                        'path': 'positions.description.blocks',
+                                                        'query': {
+                                                            'bool': {
+                                                                'should': [
+                                                                    {
+                                                                        'match': {
+                                                                            'positions.description.blocks.data.text': {
+                                                                                'query': query,
+                                                                                'boost': 5,
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        'match': {
+                                                                            'positions.description.blocks.data.items': {
+                                                                                'query': query,
+                                                                                'boost': 5,
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                ]
+                                                            }
+                                                        },
+                                                        'score_mode': 'max',
+                                                    }
+                                                },
+                                                # Поиск в сферах позиции
+                                                {
+                                                    'nested': {
+                                                        'path': 'positions.spheres',
+                                                        'query': {
+                                                            'match': {
+                                                                'positions.spheres.caption': {
+                                                                    'query': query,
+                                                                    'boost': 6,
+                                                                }
+                                                            }
+                                                        },
+                                                        'score_mode': 'max',
+                                                    }
+                                                },
+                                            ]
+                                        }
+                                    },
+                                    'score_mode': 'max',
+                                    'inner_hits': {},
                                 }
                             },
-                        }
-                    },
-                    # Поиск по основным полям компании
+                        ],
+                        'minimum_should_match': 1,
+                    }
+                },
+                'functions': [
+                    # Бустим стажировки с недавними датами
                     {
-                        'multi_match': {
-                            'query': query,
-                            'fields': [
-                                'company.caption^4',
-                                'company.seo_description',
-                                'company.seo_title',
-                                'company.alias',
-                            ],
-                            'fuzziness': 'AUTO',
+                        'exp': {
+                            'last_position_end_date': {
+                                'scale': '60d',  # Масштаб затухания - 60 дней
+                                'offset': '0d',
+                                'decay': 0.7,
+                            }
                         }
-                    },
-                    # Поиск по типу публикации
-                    {
-                        'multi_match': {
-                            'query': query,
-                            'fields': [
-                                'publication_type.name^2',
-                                'publication_type.alias',
-                            ],
-                            'fuzziness': 'AUTO',
-                        }
-                    },
-                    # Поиск по полям направления
-                    {
-                        'multi_match': {
-                            'query': query,
-                            'fields': ['direction.caption', 'direction.alias'],
-                            'fuzziness': 'AUTO',
-                        },
-                    },
+                    }
                 ],
-                'minimum_should_match': 1,
-                # 'filter': [
-                #     {
-                #         'term': {'status': 'published'}  # ? фильтр по статусу
-                #     }
-                # ],
-            },
+                'score_mode': 'multiply',  # Умножаем результаты всех функций
+                'boost_mode': 'multiply',  # Умножаем на исходную оценку релевантности
+            }
         },
         'sort': [
+            '_score',  # Сначала сортируем по релевантности
             {
                 'last_position_end_date': {
                     'order': 'asc',
@@ -276,75 +448,51 @@ def get_search_body(query: str) -> dict:
         ],
     }
 
+    tech_categories = detect_tech_category(query)
 
-# ELASTIC_SEARCH_BODY = {
-#         'query': {
-#             'bool': {
-#                 'should': [
-#                     {
-#                         'multi_match': {
-#                             'query': query,
-#                             'fields': [
-#                                 'title^3',
-#                                 'description^2',
-#                                 'seo_description',
-#                                 'status',
-#                                 'publication_status',
-#                             ],
-#                         }
-#                     },
-#                     {
-#                         'nested': {
-#                             'path': 'tags',
-#                             'query': {
-#                                 'multi_match': {
-#                                     'query': query,
-#                                     'fields': [
-#                                         'tags.caption^2',
-#                                         'tags.seo_description',
-#                                         'tags.seo_title',
-#                                         'tags.seo_uri',
-#                                     ],
-#                                 }
-#                             },
-#                         }
-#                     },
-#                     {
-#                         'nested': {
-#                             'path': 'company.directions',
-#                             'query': {
-#                                 'multi_match': {
-#                                     'query': query,
-#                                     'fields': [
-#                                         'company.directions.caption',
-#                                         'company.directions.alias',
-#                                     ],
-#                                 }
-#                             },
-#                         }
-#                     },
-#                     {
-#                         'multi_match': {
-#                             'query': query,
-#                             'fields': [
-#                                 'company.caption^2',
-#                                 'company.seo_description',
-#                                 'company.seo_title',
-#                             ],
-#                         }
-#                     },
-#                     {
-#                         'multi_match': {
-#                             'query': query,
-#                             'fields': ['industry.name^2', 'industry.uuid'],
-#                         }
-#                     },
-#                 ],
-#                 'filter': [
-#                     {
-#                         'term': {'status': 'published'}  # ? фильтр по статусу
-#                     }
-#                 ],
-#             }
-#         }
-#     }
+    if tech_categories:
+        for terms in tech_categories.values():
+            search_body['query']['function_score']['functions'].append({
+                'filter': {
+                    'multi_match': {
+                        'query': ' '.join(terms),
+                        'fields': [
+                            'positions.name^10',
+                            'positions.description.blocks.data.text^5',
+                            'title^3',
+                            'description',
+                        ],
+                        'type': 'best_fields',
+                        'operator': 'OR',
+                    },
+                },
+                'weight': 2.0,
+            })
+
+    return search_body
+
+
+def detect_tech_category(query: str) -> dict[str, list[str]]:
+    """
+    Определяет техническую категорию запроса для настройки поиска.
+
+    Args:
+        query: Поисковый запрос
+
+    Returns:
+        Словарь категорий и связанных с ними терминов
+    """
+    query_lower = query.lower()
+
+    result = {}
+
+    for category, data in TECH_CATEGORIES.items():
+        if category == query_lower:
+            result[category] = data
+            break
+
+        if any(term in query_lower for term in data):
+            result[category] = data
+            continue
+
+    return result
