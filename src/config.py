@@ -1,4 +1,5 @@
-from eval.tech_categories import TECH_CATEGORIES
+from eval.tech_categories import COMMON_TERMS
+from utils import detect_tech_category
 
 INDEX_SETTINGS = {
     'settings': {
@@ -451,48 +452,55 @@ def get_search_body(query: str) -> dict:
     tech_categories = detect_tech_category(query)
 
     if tech_categories:
-        for terms in tech_categories.values():
-            search_body['query']['function_score']['functions'].append({
-                'filter': {
-                    'multi_match': {
-                        'query': ' '.join(terms),
-                        'fields': [
-                            'positions.name^10',
-                            'positions.description.blocks.data.text^5',
-                            'title^3',
-                            'description',
-                        ],
-                        'type': 'best_fields',
-                        'operator': 'OR',
-                    },
+        query_terms = []
+        fields_to_search = [
+            'positions.name^10',
+            'positions.description.blocks.data.text^5',
+            'title^3',
+            'description',
+        ]
+
+        for tech, terms in tech_categories.items():
+            query_terms.append(tech)
+
+            # Проверяем, является ли запрос техническим термином
+            is_technical_term = True
+            for common_term in COMMON_TERMS:
+                if common_term in query.lower():
+                    is_technical_term = False
+                    break
+
+            # Если запрос - технический термин,
+            #   добавляем больше специфичных терминов
+            # Если общий - добавляем больше общих категорий
+            if is_technical_term:
+                specific_terms = [
+                    term for term in terms if term not in COMMON_TERMS
+                ]
+                query_terms.extend(specific_terms[:3])
+            else:
+                common_terms = [term for term in terms if term in COMMON_TERMS]
+                query_terms.extend(common_terms)
+
+        unique_terms = list(set(query_terms))
+
+        search_body['query']['function_score']['functions'].append({
+            'filter': {
+                'multi_match': {
+                    'query': ' '.join(unique_terms),
+                    'fields': fields_to_search,
+                    'type': 'best_fields',
+                    'operator': 'OR',
                 },
-                'weight': 2.0,
-            })
+            },
+            'weight': 2.0,
+        })
+
+        # Для узкоспециализированных запросов добавляем фильтрацию нерелевантных
+        # результатов
+        if len(query.split()) <= 2 and any(
+            tech in query.lower() for tech in tech_categories.keys()
+        ):
+            search_body['min_score'] = 1.0
 
     return search_body
-
-
-def detect_tech_category(query: str) -> dict[str, list[str]]:
-    """
-    Определяет техническую категорию запроса для настройки поиска.
-
-    Args:
-        query: Поисковый запрос
-
-    Returns:
-        Словарь категорий и связанных с ними терминов
-    """
-    query_lower = query.lower()
-
-    result = {}
-
-    for category, data in TECH_CATEGORIES.items():
-        if category == query_lower:
-            result[category] = data
-            break
-
-        if any(term in query_lower for term in data):
-            result[category] = data
-            continue
-
-    return result

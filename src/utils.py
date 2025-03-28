@@ -3,6 +3,8 @@ import re
 from datetime import datetime
 from typing import Any
 
+from eval.tech_categories import TECH_CATEGORIES
+
 
 def load_json(file_path: str) -> dict:
     """Загрузка данных из JSON-файла"""
@@ -37,6 +39,54 @@ def remove_bad_words(data: list[dict], bad_words: set[str]) -> list[dict]:
         # Применяем регулярное выражение для удаления плохих слов
         return bad_words_pattern.sub('', data)
     return data
+
+
+def make_query_variants(query: str) -> set[str]:
+    return {
+        # Оригинальный запрос
+        query,
+        # Без пробелов
+        query.replace(' ', ''),
+        # Пробелы вместо дефисов
+        query.replace('-', ' '),
+        # Дефисы вместо пробелов
+        query.replace(' ', '-'),
+    }
+
+
+def detect_tech_category(query: str) -> dict[str, list[str]]:
+    """
+    Определяет техническую категорию запроса для настройки поиска.
+
+    Args:
+        query: Поисковый запрос
+
+    Returns:
+        Словарь категорий и связанных с ними терминов
+    """
+    query_lower = query.lower()
+    query_variants = make_query_variants(query_lower)
+
+    result = {}
+
+    for category, terms in TECH_CATEGORIES.items():
+        if any(variant == category for variant in query_variants):
+            result[category] = terms
+            continue
+
+        if any(variant in terms for variant in query_variants):
+            result[category] = terms
+            continue
+
+        if any(category in variant for variant in query_variants):
+            result[category] = terms
+            continue
+
+        if any(term in query_lower for term in terms):
+            result[category] = terms
+            continue
+
+    return result
 
 
 def print_search_result(result: dict[str, Any], verbose: bool = False) -> None:

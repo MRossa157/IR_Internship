@@ -4,6 +4,7 @@ from eval.tech_categories import (
     TECH_CATEGORIES,
     TERM_WEIGHTS,
 )
+from utils import make_query_variants
 
 
 class RelevanceCalculator:
@@ -24,6 +25,15 @@ class RelevanceCalculator:
         source = result.get('_source', {})
         query_parts = query_lower.split()
 
+        query_categories = {}
+        for tech, categories in TECH_CATEGORIES.items():
+            if (
+                tech == query_lower
+                or tech in query_lower
+                or any(term in query_lower for term in categories)
+            ):
+                query_categories[tech] = categories
+
         positions_score = cls._evaluate_positions(
             query=query_lower,
             query_parts=query_parts,
@@ -39,9 +49,74 @@ class RelevanceCalculator:
         else:
             score = positions_score
 
+        # Если запрос связан с технической категорией, но документ не содержит
+        # ни одного термина из этой категории, снижаем оценку
+        if (
+            score < RELEVANCE_WEIGHTS['category_match'] * 0.8
+            and query_categories
+        ):
+            document_text = cls._extract_document_text(source)
+
+            category_found = False
+            for categories in query_categories.values():
+                if any(category in document_text for category in categories):
+                    category_found = True
+                    break
+
+            # Если документ не содержит ни одного термина из категории запроса,
+            # и оценка низкая, еще больше снижаем её
+            if (
+                not category_found
+                and score < RELEVANCE_WEIGHTS['category_match'] * 0.5
+            ):
+                score *= 0.5
+
         normalized_score = min(score / RELEVANCE_WEIGHTS['max_score'], 1.0)
 
         return normalized_score
+
+    @classmethod
+    def _extract_document_text(cls, source: dict) -> str:
+        """
+        Извлекает весь текст из документа для комплексного анализа.
+
+        Args:
+            source: Исходный документ
+
+        Returns:
+            Весь текст документа в нижнем регистре
+        """
+        text_parts = []
+
+        if 'title' in source:
+            text_parts.append(source['title'].lower())
+
+        if 'description' in source:
+            text_parts.append(source['description'].lower())
+
+        if 'positions' in source and source['positions']:
+            for position in source['positions']:
+                if 'name' in position:
+                    text_parts.append(position['name'].lower())
+
+                if (
+                    'description' in position
+                    and position['description']
+                    and 'blocks' in position['description']
+                ):
+                    for block in position['description']['blocks']:
+                        if 'data' in block:
+                            if 'text' in block['data']:
+                                text_parts.append(block['data']['text'].lower())
+                            if 'items' in block['data'] and isinstance(
+                                block['data']['items'],
+                                list,
+                            ):
+                                for item in block['data']['items']:
+                                    if isinstance(item, str):
+                                        text_parts.append(item.lower())
+
+        return ' '.join(text_parts)
 
     @classmethod
     def _evaluate_positions(
@@ -171,10 +246,23 @@ class RelevanceCalculator:
         Returns:
             Оценка релевантности на основе категорий
         """
+        query = query.strip()
+        text = text.strip()
+
+        query_variants = make_query_variants(query)
+
         for tech, categories in TECH_CATEGORIES.items():
-            if tech in query:
+            tech_match = any(
+                variant == tech or tech in variant for variant in query_variants
+            )
+
+            if tech_match:
                 if any(category in text for category in categories):
                     return RELEVANCE_WEIGHTS['category_match']
+
+                if tech in text:
+                    return RELEVANCE_WEIGHTS['category_match']
+
         return 0.0
 
     @classmethod
@@ -219,11 +307,37 @@ class RelevanceCalculator:
         """
         score = 0.0
 
-        if 'title' in source and query in source['title'].lower():
-            score = max(score, RELEVANCE_WEIGHTS['title_match'])
+        if 'title' in source:
+            title = source['title'].lower()
 
-        if 'description' in source and query in source['description'].lower():
-            score = max(score, RELEVANCE_WEIGHTS['description_match'])
+            # Если запрос полностью содержится в названии
+            if query in title:
+                # Убедимся, что это не случайное совпадение
+                # Напр., запрос "front" может быть частью слова "confrontation"
+                words = title.split()
+                if query in words or any(
+                    query == word or query + 's' == word for word in words
+                ):
+                    score = max(score, RELEVANCE_WEIGHTS['title_match'])
+                else:
+                    # Проверка на соответствие техническим категориям
+                    tech_score = cls._check_tech_category_match(query, title)
+                    # Уменьшаем вес для частичных совпадений
+                    score = max(score, tech_score * 0.5)
+
+        if 'description' in source:
+            description = source['description'].lower()
+
+            if query in description:
+                words = description.split()
+                if query in words or any(query + 's' == word for word in words):
+                    score = max(score, RELEVANCE_WEIGHTS['description_match'])
+                else:
+                    tech_score = cls._check_tech_category_match(
+                        query,
+                        description,
+                    )
+                    score = max(score, tech_score * 0.3)
 
         return score
 
