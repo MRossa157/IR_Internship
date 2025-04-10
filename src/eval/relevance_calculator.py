@@ -1,10 +1,10 @@
-from eval.tech_categories import (
+from src.eval.tech_categories import (
     COMMON_TERMS,
     RELEVANCE_WEIGHTS,
     TECH_CATEGORIES,
     TERM_WEIGHTS,
 )
-from utils import make_query_variants
+from src.utils import make_query_variants
 
 
 class RelevanceCalculator:
@@ -76,7 +76,7 @@ class RelevanceCalculator:
         return normalized_score
 
     @classmethod
-    def _extract_document_text(cls, source: dict) -> str:
+    def _extract_document_text(cls, source: dict) -> str:  # noqa: C901
         """
         Извлекает весь текст из документа для комплексного анализа.
 
@@ -105,9 +105,11 @@ class RelevanceCalculator:
                     and 'blocks' in position['description']
                 ):
                     for block in position['description']['blocks']:
-                        if 'data' in block:
-                            if 'text' in block['data']:
-                                text_parts.append(block['data']['text'].lower())
+                        if (
+                            'data' in block
+                            and block['data'].get('text') is not None
+                        ):
+                            text_parts.append(block['data']['text'].lower())
                             if 'items' in block['data'] and isinstance(
                                 block['data']['items'],
                                 list,

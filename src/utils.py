@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from typing import Any
 
-from eval.tech_categories import TECH_CATEGORIES
+from src.eval.tech_categories import TECH_CATEGORIES
 
 
 def load_json(file_path: str) -> dict:
@@ -136,7 +136,12 @@ def print_search_result(result: dict[str, Any], verbose: bool = False) -> None:
             f'Дата публикации: {published_at}\n'
             f'Дата завершения: {unpublished_at}\n'
             f'Описание компании: {company_description}\n'
-            f'Вакансии доступны в следующих направлениях: {", ".join(positions)}\n'
-            f'Ссылка на вакансии: {external_link if external_link else "Нет ссылок на вакансии."}\n'
+
+            f'Вакансии доступны в следующих направлениях: '
+            f'{", ".join(positions)}\n'
+
+            'Ссылка на вакансии: '
+            f'{external_link if external_link else "Нет ссылок на вакансии."}\n'
+
             f'Ссылка на стажировку: {internship_url}\n',
         )

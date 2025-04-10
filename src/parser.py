@@ -6,7 +6,13 @@ from typing import Any
 
 import aiohttp
 
-from src.constants import EVENTS_LIST_PATH, INTERNSHIP_LIST_PATH
+from src.constants import (
+    BAD_WORDS,
+    EVENTS_LIST_PATH,
+    INTERNSHIP_LIST_PATH,
+    PARSER_RESULT_FILENAME,
+)
+from utils import remove_bad_words, save_json
 
 
 class InternshipsParser:
@@ -63,7 +69,7 @@ class InternshipsParser:
                 f'{EVENTS_LIST_PATH}/{item["event"]}',
             )
             item['positions'] = event_data['data']['positions']
-        except Exception as e:
+        except Exception:
             item['positions'] = None
 
     async def __aenter__(self) -> InternshipsParser:
@@ -73,7 +79,7 @@ class InternshipsParser:
         )
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
         if self.__session:
             await self.__session.close()
 
@@ -101,3 +107,13 @@ class InternshipsParser:
             if response.status == 200:
                 return await response.json()
             raise Exception(f'Failed to fetch data: {response.status}')
+
+
+async def start_parsing() -> dict:
+    async with InternshipsParser() as parser:  # noqa: F821
+        parser_result = await parser.get_total_data()
+
+    parser_result = remove_bad_words(parser_result, BAD_WORDS)
+    save_json(PARSER_RESULT_FILENAME, parser_result)
+
+    return parser_result

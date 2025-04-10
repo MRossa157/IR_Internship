@@ -1,21 +1,11 @@
 import logging
 import os
 from asyncio import run
+from parser import start_parsing
 
-from constants import BAD_WORDS, INDEX_NAME, PARSER_RESULT_FILENAME
+from constants import INDEX_NAME, PARSER_RESULT_FILENAME
 from elastic_search import create_index, index_internships, search_internships
-from src.parser import InternshipsParser
-from utils import load_json, print_search_result, remove_bad_words, save_json
-
-
-async def start_parsing() -> dict:
-    async with InternshipsParser() as parser:  # noqa: F821
-        parser_result = await parser.get_total_data()
-
-    parser_result = remove_bad_words(parser_result, BAD_WORDS)
-    save_json(PARSER_RESULT_FILENAME, parser_result)
-
-    return parser_result
+from utils import load_json, print_search_result
 
 
 def main() -> None:

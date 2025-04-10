@@ -1,5 +1,5 @@
-from eval.tech_categories import COMMON_TERMS
-from utils import detect_tech_category
+from src.eval.tech_categories import COMMON_TERMS
+from src.utils import detect_tech_category
 
 INDEX_SETTINGS = {
     'settings': {
@@ -131,7 +131,7 @@ INDEX_SETTINGS = {
                             },
                         },
                     },
-                }
+                },
             },
             'publication_type': {
                 'properties': {
@@ -243,7 +243,7 @@ def get_search_body(query: str) -> dict:
                                     'operator': 'OR',
                                     'type': 'best_fields',
                                     'tie_breaker': 0.3,
-                                }
+                                },
                             },
                             # Поиск по вложенному полю tags
                             {
@@ -259,10 +259,10 @@ def get_search_body(query: str) -> dict:
                                                 'tags.seo_uri',
                                             ],
                                             'fuzziness': 'AUTO',
-                                        }
+                                        },
                                     },
                                     'score_mode': 'max',
-                                }
+                                },
                             },
                             # Поиск по вложенным полям company.directions
                             {
@@ -276,10 +276,10 @@ def get_search_body(query: str) -> dict:
                                                 'company.directions.alias',
                                             ],
                                             'fuzziness': 'AUTO',
-                                        }
+                                        },
                                     },
                                     'score_mode': 'max',
-                                }
+                                },
                             },
                             # Поиск по вложенным полям company.industries
                             {
@@ -292,10 +292,10 @@ def get_search_body(query: str) -> dict:
                                                 'company.industries.name^3',
                                             ],
                                             'fuzziness': 'AUTO',
-                                        }
+                                        },
                                     },
                                     'score_mode': 'max',
-                                }
+                                },
                             },
                             # Поиск по основным полям компании
                             {
@@ -308,7 +308,7 @@ def get_search_body(query: str) -> dict:
                                         'company.alias',
                                     ],
                                     'fuzziness': 'AUTO',
-                                }
+                                },
                             },
                             # Поиск по типу публикации
                             {
@@ -319,7 +319,7 @@ def get_search_body(query: str) -> dict:
                                         'publication_type.alias',
                                     ],
                                     'fuzziness': 'AUTO',
-                                }
+                                },
                             },
                             # Поиск по полям направления
                             {
@@ -346,8 +346,8 @@ def get_search_body(query: str) -> dict:
                                                             'query': query,
                                                             'boost': 10,  # Высокий буст для точного совпадения в названии позиции
                                                             'fuzziness': 'AUTO',
-                                                        }
-                                                    }
+                                                        },
+                                                    },
                                                 },
                                                 # Поиск по n-граммам для частичных совпадений
                                                 {
@@ -355,8 +355,8 @@ def get_search_body(query: str) -> dict:
                                                         'positions.name.ngram': {
                                                             'query': query,
                                                             'boost': 6,  # Высокий буст для частичных совпадений
-                                                        }
-                                                    }
+                                                        },
+                                                    },
                                                 },
                                                 # Поиск по шинглам для словосочетаний
                                                 {
@@ -364,8 +364,8 @@ def get_search_body(query: str) -> dict:
                                                         'positions.name.shingle': {
                                                             'query': query,
                                                             'boost': 8,  # Высокий буст для словосочетаний
-                                                        }
-                                                    }
+                                                        },
+                                                    },
                                                 },
                                                 # Поиск в описании позиции
                                                 {
@@ -379,22 +379,22 @@ def get_search_body(query: str) -> dict:
                                                                             'positions.description.blocks.data.text': {
                                                                                 'query': query,
                                                                                 'boost': 5,
-                                                                            }
-                                                                        }
+                                                                            },
+                                                                        },
                                                                     },
                                                                     {
                                                                         'match': {
                                                                             'positions.description.blocks.data.items': {
                                                                                 'query': query,
                                                                                 'boost': 5,
-                                                                            }
-                                                                        }
+                                                                            },
+                                                                        },
                                                                     },
-                                                                ]
-                                                            }
+                                                                ],
+                                                            },
                                                         },
                                                         'score_mode': 'max',
-                                                    }
+                                                    },
                                                 },
                                                 # Поиск в сферах позиции
                                                 {
@@ -405,22 +405,22 @@ def get_search_body(query: str) -> dict:
                                                                 'positions.spheres.caption': {
                                                                     'query': query,
                                                                     'boost': 6,
-                                                                }
-                                                            }
+                                                                },
+                                                            },
                                                         },
                                                         'score_mode': 'max',
-                                                    }
+                                                    },
                                                 },
-                                            ]
-                                        }
+                                            ],
+                                        },
                                     },
                                     'score_mode': 'max',
                                     'inner_hits': {},
-                                }
+                                },
                             },
                         ],
                         'minimum_should_match': 1,
-                    }
+                    },
                 },
                 'functions': [
                     # Бустим стажировки с недавними датами
@@ -430,13 +430,13 @@ def get_search_body(query: str) -> dict:
                                 'scale': '60d',  # Масштаб затухания - 60 дней
                                 'offset': '0d',
                                 'decay': 0.7,
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 ],
                 'score_mode': 'multiply',  # Умножаем результаты всех функций
                 'boost_mode': 'multiply',  # Умножаем на исходную оценку релевантности
-            }
+            },
         },
         'sort': [
             '_score',  # Сначала сортируем по релевантности

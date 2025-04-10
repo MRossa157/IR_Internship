@@ -1,10 +1,11 @@
 import logging
 import os
+from typing import Any
 
 from elasticsearch import Elasticsearch
 
-from config import INDEX_SETTINGS, get_search_body
-from utils import convert_to_iso_format
+from src.config import INDEX_SETTINGS, get_search_body
+from src.utils import convert_to_iso_format
 
 es = Elasticsearch(os.getenv('ELASTICSEARCH_URL'))
 
@@ -29,10 +30,10 @@ def index_internships(json_data: dict, index_name: str) -> None:
 
 
 def search_internships(
-    query,
+    query: str,
     index_name: str,
     size: int = 10,
-):
+) -> dict[str, Any]:
     """
     Расширенный поиск стажировок с учетом множества полей и вложенных объектов
     """

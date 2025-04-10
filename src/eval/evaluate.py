@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 
-from eval.relevance_calculator import calculate_result_relevance
+from src.eval.relevance_calculator import calculate_result_relevance
 
 
 class SearchEvaluator:
@@ -120,14 +120,12 @@ class SearchEvaluator:
     @staticmethod
     def evaluate_multiple_queries(
         queries_results: dict[str, list[dict[str, Any]]],
-        relevance_function: Callable | None = None,
     ) -> dict[str, Any]:
         """
         Оценивает результаты поиска для нескольких запросов.
 
         Args:
             queries_results: Словарь с результатами поиска для каждого запроса
-            relevance_function: Функция для оценки релевантности результата
 
         Returns:
             Словарь с метриками оценки для каждого запроса и средними значениями
@@ -189,38 +187,3 @@ class SearchEvaluator:
         })
 
         return pd.DataFrame(data)
-
-    @staticmethod
-    def parse_relevance_scores(text_data: str) -> dict[str, list[int]]:
-        """
-        Парсит данные оценки из текстового формата.
-
-        Args:
-            text_data: Текст с данными об оценке релевантности
-
-        Returns:
-            Словарь с запросами и оценками релевантности
-        """
-        query_blocks = {}
-        current_query = None
-
-        lines = text_data.strip().split('\n')
-
-        for line in lines:
-            line = line.strip()
-
-            if not line:
-                continue
-
-            if '\t' in line and line.split('\t')[0].strip().isdigit():
-                parts = line.split('\t')
-                if len(parts) > 3 and parts[0].strip() and parts[3].strip():
-                    current_query = parts[1].strip()
-                    relevance = int(parts[3].strip())
-
-                    if current_query not in query_blocks:
-                        query_blocks[current_query] = []
-
-                    query_blocks[current_query].append(relevance)
-
-        return query_blocks
