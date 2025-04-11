@@ -6,10 +6,9 @@ from transformers import AutoTokenizer
 
 from src.bert.dataset import (
     InternshipDataset,
-    create_training_data_from_categories,
     create_training_data_from_evaluation,
 )
-from src.bert.model import BERTRanker, BERTRankerFitter
+from src.bert.model import BERTSearchEngine, BERTSearchEngineFitter
 from src.constants import (
     BERT_PRETRAINED_MODEL_NAME,
     BERT_TRAINING_BATCH_SIZE,
@@ -17,7 +16,6 @@ from src.constants import (
     EVALUATION_QUERIES,
     INDEX_NAME,
 )
-from src.elastic_search import search_internships
 from src.eval.evaluate import SearchEvaluator
 
 
@@ -28,11 +26,17 @@ def train_bert_ranker(
     epochs: int = 3,
     lr: float = 2e-5,
 ) -> torch.nn.Module:
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+        torch.cuda.empty_cache()
+    else:
+        device = torch.device('cpu')
     model.to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
     criterion = torch.nn.BCELoss()
+    scaler = torch.GradScaler(device=device)
 
     best_val_loss = float('inf')
     best_ndcg = 0.0
@@ -59,8 +63,10 @@ def train_bert_ranker(
             )
 
             loss = criterion(outputs.squeeze(), labels)
-            loss.backward()
-            optimizer.step()
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             total_train_loss += loss.item()
 
@@ -89,21 +95,21 @@ def train_bert_ranker(
                 )
 
                 loss = criterion(outputs.squeeze(), labels)
+
                 total_val_loss += loss.item()
 
         avg_val_loss = total_val_loss / len(val_loader)
 
         # Оценка NDCG и Precision
-        bert_wrapper = BERTRanker(checkpoint_path=None)
+        bert_wrapper = BERTSearchEngine(model=model)
         bert_results = {}
         for query in tqdm(
             EVALUATION_QUERIES,
             desc=f'Evaluation Epoch {epoch + 1}',
         ):
-            es_results = search_internships(query, INDEX_NAME)
-            bert_results[query] = bert_wrapper.rerank_results(
+            bert_results[query] = bert_wrapper.find_internships(
                 query,
-                es_results.copy(),
+                INDEX_NAME,
             )
 
         evaluations = SearchEvaluator.evaluate_multiple_queries(bert_results)
@@ -112,10 +118,12 @@ def train_bert_ranker(
 
         print(
             f'Epoch {epoch + 1}/{epochs}: '
-            f'Train Loss: {avg_train_loss:.4f} |'
-            f'Val Loss: {avg_val_loss:.4f} |'
+            f'Train Loss: {avg_train_loss:.4f} | '
+            f'Val Loss: {avg_val_loss:.4f} | '
             f'Precision: {current_precision:.4f} | NDCG: {current_ndcg:.4f}',
         )
+
+        scheduler.step()
 
         if current_ndcg > best_ndcg:
             best_ndcg = current_ndcg
@@ -132,18 +140,7 @@ def train_bert_ranker(
 
 def train_model_pipeline() -> torch.nn.Module:
     """Полный пайплайн обучения: подготовка данных, обучение, сохранение"""
-    # Получение обучающих данных
-    method1_queries, method1_texts, method1_labels = (
-        create_training_data_from_evaluation()
-    )
-    method2_queries, method2_texts, method2_labels = (
-        create_training_data_from_categories()
-    )
-
-    # Объединяем данные из разных источников
-    queries = method1_queries + method2_queries
-    texts = method1_texts + method2_texts
-    labels = method1_labels + method2_labels
+    queries, texts, labels = create_training_data_from_evaluation()
 
     (
         train_queries,
@@ -160,10 +157,9 @@ def train_model_pipeline() -> torch.nn.Module:
         random_state=42,
     )
 
-    # Инициализируем токенизатор и модель
     model_name = BERT_PRETRAINED_MODEL_NAME
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = BERTRankerFitter(model_name=model_name)
+    model = BERTSearchEngineFitter(model_name=model_name)
 
     train_dataset = InternshipDataset(
         train_queries,
