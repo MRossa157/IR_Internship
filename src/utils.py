@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 from datetime import datetime
@@ -24,7 +26,7 @@ def convert_to_iso_format(date_str: str) -> str:
     return date_obj.isoformat()
 
 
-def remove_bad_words(data: list[dict], bad_words: set[str]) -> list[dict]:
+def remove_bad_words(data: list[dict] | str, bad_words: set[str]) -> list[dict]:
     # Преобразуем bad_words в регулярное выражение для ускоренной замены
     bad_words_pattern = re.compile('|'.join(map(re.escape, bad_words)))
 
@@ -35,9 +37,11 @@ def remove_bad_words(data: list[dict], bad_words: set[str]) -> list[dict]:
         }
     if isinstance(data, list):
         return [remove_bad_words(item, bad_words) for item in data]
+
     if isinstance(data, str):
         # Применяем регулярное выражение для удаления плохих слов
         return bad_words_pattern.sub('', data)
+
     return data
 
 

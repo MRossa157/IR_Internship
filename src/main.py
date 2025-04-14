@@ -1,10 +1,10 @@
 import logging
 import os
 from asyncio import run
+from parser import start_parsing
 
 from constants import INDEX_NAME, PARSER_RESULT_FILENAME
 from elastic_search import create_index, index_internships, search_internships
-from parser import start_parsing
 from utils import load_json, print_search_result
 
 
