@@ -1,16 +1,21 @@
 # Internship Search Engine
 
+[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.x-green.svg)](https://www.elastic.co/elasticsearch/)
+[![Poetry](https://img.shields.io/badge/Poetry-✓-blueviolet.svg)](https://python-poetry.org/)
+[![CUDA](https://img.shields.io/badge/CUDA-Recommended-9cf.svg)](https://developer.nvidia.com/cuda-toolkit)
+
 This project is an intelligent search engine for internships that combines traditional Elasticsearch-based search with BERT-based semantic search capabilities. It allows users to search through internship listings using either keyword-based search or more advanced semantic search powered by BERT.
 
-## Features
+## 🚀 Features
 
-- Web scraping of internship listings
-- Elasticsearch-based indexing and search
-- Optional BERT-based semantic search
-- Command-line interface for interactive searching
-- Results display with detailed internship information
+- 🔍 Web scraping of internship listings
+- 📊 Elasticsearch-based indexing and search
+- 🤖 Optional BERT-based semantic search
+- ⌨️ Command-line interface for interactive searching
+- 📝 Results display with detailed internship information
 
-## Prerequisites
+## 📋 Prerequisites
 
 - Python 3.12+
 - Poetry (Python package manager)
@@ -18,7 +23,7 @@ This project is an intelligent search engine for internships that combines tradi
 - BERT model weights (optional, for semantic search)
 - CUDA-compatible GPU (recommended for BERT-based search)
 
-## Installation
+## 🛠️ Installation
 
 1. Clone the repository:
 ```bash
@@ -52,7 +57,7 @@ poetry install
    - Install and start Elasticsearch on your machine
    - Make sure Elasticsearch is running on the default port (9200)
 
-## BERT Model Training
+## 🤖 BERT Model Training
 
 By default, the BERT model is not trained. To use BERT-based semantic search, you need to train the model first:
 
@@ -71,7 +76,7 @@ python src/bert/trainer.py
    - `BERT_TRAINING_EPOCHS`: Number of training epochs
    - `BERT_PRETRAINED_MODEL_NAME`: Pre-trained model to use
 
-## Usage
+## 💻 Usage
 
 1. Run the main script:
 ```bash
@@ -91,23 +96,31 @@ poetry run src/main.py
 4. Enter your search query when prompted
    - Type "exit" to quit the program
 
-## Project Structure
+## 📁 Project Structure
 
-- `src/`: Main source code directory
-  - `main.py`: Entry point of the application
-  - `parser.py`: Web scraping functionality
-  - `elastic_search.py`: Elasticsearch integration
-  - `bert/`: BERT model implementation
-  - `utils.py`: Utility functions
-  - `constants.py`: Project constants
-  - `config.py`: Configuration settings
-  - `eval/`: Evaluation scripts
-  - `analysis/`: Analysis tools
+```
+src/
+├── main.py              # Entry point of the application
+├── parser.py            # Web scraping functionality
+├── elastic_search.py    # Elasticsearch integration
+├── bert/               # BERT model implementation
+├── utils.py            # Utility functions
+├── constants.py        # Project constants
+├── config.py           # Configuration settings
+├── eval/              # Evaluation scripts
+└── analysis/          # Analysis tools
+```
 
-## Notes
+## 📝 Notes
 
-- The first run will take longer as it needs to scrape and index the internship data
-- Subsequent runs will use cached data for faster startup
-- BERT-based search requires a trained model weights file
-- For optimal performance with BERT, a CUDA-compatible GPU is recommended
-- Development tools like ruff and scikit-learn **are included in the dev dependencies**
+- ⏳ The first run will take longer as it needs to scrape and index the internship data
+- 🔄 Subsequent runs will use cached data for faster startup
+- 🤖 BERT-based search requires a trained model weights file
+- 🚀 For optimal performance with BERT, a CUDA-compatible GPU is recommended
+- 🛠️ Development tools like ruff and scikit-learn **are included in the dev dependencies**
+
+## 🔗 Links
+
+- [Elasticsearch Documentation](https://www.elastic.co/guide/index.html)
+- [BERT Documentation](https://huggingface.co/docs/transformers/index)
+- [Poetry Documentation](https://python-poetry.org/docs/)
