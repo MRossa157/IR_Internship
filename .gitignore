@@ -91,3 +91,5 @@ alembic.ini
 
 # Current project stuff
 *.json
+*.pth
+*.csv

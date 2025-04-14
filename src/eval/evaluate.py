@@ -155,12 +155,16 @@ class SearchEvaluator:
         }
 
     @staticmethod
-    def create_report_dataframe(evaluations: dict[str, Any]) -> pd.DataFrame:
+    def create_report_dataframe(
+        evaluations: dict[str, Any],
+        model_name: str | None = None,
+    ) -> pd.DataFrame:
         """
         Создает DataFrame с результатами оценки.
 
         Args:
             evaluations: Результаты оценки от метода evaluate_multiple_queries
+            model_name: Название модели
 
         Returns:
             DataFrame с результатами
@@ -168,22 +172,18 @@ class SearchEvaluator:
         data = []
 
         for query, eval_result in evaluations['evaluations'].items():
-            data.append({
-                'Запрос': query,
-                'Precision': round(eval_result['precision'], 3),
-                'DCG': round(eval_result['dcg'], 3),
-                'IDCG': round(eval_result['idcg'], 3),
-                'NDCG': round(eval_result['ndcg'], 3),
-                'Кол-во результатов': eval_result['evaluated_results'],
-            })
-
-        data.append({
-            'Запрос': 'СРЕДНЕЕ',
-            'Precision': round(evaluations['avg_precision'], 3),
-            'DCG': '',
-            'IDCG': '',
-            'NDCG': round(evaluations['avg_ndcg'], 3),
-            'Кол-во результатов': '',
-        })
+            for metric in {
+                'precision',
+                'dcg',
+                'idcg',
+                'ndcg',
+                'evaluated_results',
+            }:
+                data.append({
+                    'Запрос': query,
+                    'Модель': model_name,
+                    'Метрика': metric.upper(),
+                    'Значение': round(eval_result[metric], 3),
+                })
 
         return pd.DataFrame(data)

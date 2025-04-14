@@ -26,11 +26,13 @@ def train_bert_ranker(
     epochs: int = 3,
     lr: float = 2e-5,
 ) -> torch.nn.Module:
+
     if torch.cuda.is_available():
         device = torch.device('cuda')
         torch.cuda.empty_cache()
     else:
         device = torch.device('cpu')
+
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
@@ -128,7 +130,7 @@ def train_bert_ranker(
         if current_ndcg > best_ndcg:
             best_ndcg = current_ndcg
             torch.save(model.state_dict(), 'best_bert_ranker_ndcg.pth')
-            print(f"Model saved with best NDCG: {best_ndcg:.4f}")
+            print(f'Model saved with best NDCG: {best_ndcg:.4f}')
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
